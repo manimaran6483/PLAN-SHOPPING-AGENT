@@ -64,7 +64,13 @@ async def startup_event():
         chroma_db_path = "./chroma_db"
         if os.path.exists(chroma_db_path):
             logger.info("Clearing existing ChromaDB...")
-            shutil.rmtree(chroma_db_path)
+            try:
+                shutil.rmtree(chroma_db_path)
+            except Exception as e:
+                logger.warning(f"Could not remove existing ChromaDB: {e}")
+        
+        # Ensure the directory exists (ChromaDB will create it if needed)
+        os.makedirs(os.path.dirname(chroma_db_path) if os.path.dirname(chroma_db_path) else ".", exist_ok=True)
         
         # Initialize knowledge base
         logger.info("Initializing knowledge base...")
@@ -72,9 +78,17 @@ async def startup_event():
         
         # Load all PDF documents from plan_documents directory
         plan_documents_dir = "plan_documents"
+        if not os.path.exists(plan_documents_dir):
+            logger.warning(f"Plan documents directory '{plan_documents_dir}' not found. Creating it...")
+            os.makedirs(plan_documents_dir, exist_ok=True)
+            logger.info(f"Created directory '{plan_documents_dir}'. Please add your PDF files to this directory.")
+        
         if os.path.exists(plan_documents_dir):
             pdf_files = glob.glob(os.path.join(plan_documents_dir, "*.pdf"))
             logger.info(f"Found {len(pdf_files)} PDF files to process")
+            
+            if len(pdf_files) == 0:
+                logger.warning("No PDF files found in plan_documents directory")
             
             for pdf_file in pdf_files:
                 try:
@@ -89,8 +103,6 @@ async def startup_event():
                 except Exception as e:
                     logger.error(f"Error processing {pdf_file}: {str(e)}")
                     continue
-        else:
-            logger.warning(f"Plan documents directory '{plan_documents_dir}' not found")
         
         logger.info("API startup completed successfully")
         
