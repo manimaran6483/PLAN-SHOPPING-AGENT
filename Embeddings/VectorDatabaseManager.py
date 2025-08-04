@@ -1,5 +1,4 @@
 from typing import Any, Dict, List
-import numpy as np
 from openai import OpenAI
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction

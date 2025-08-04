@@ -1,5 +1,4 @@
 import tiktoken
-import numpy as np
 import uuid
 from typing import List, Dict, Any, Tuple
 
