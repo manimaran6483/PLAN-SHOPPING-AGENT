@@ -226,6 +226,24 @@ async def get_optimization_stats():
         logger.error(f"Error getting optimization stats: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+@app.get("/api/v1/database-status")
+async def get_database_status():
+    """Get ChromaDB collection status and document count"""
+    try:
+        if knowledge_base is None:
+            raise HTTPException(status_code=503, detail="Knowledge base not initialized")
+        
+        collection_info = knowledge_base.vector_db.get_collection_info()
+        
+        return {
+            "status": "success",
+            "database_info": collection_info,
+            "message": f"Database has {'documents' if collection_info.get('has_documents') else 'no documents'}"
+        }
+    except Exception as e:
+        logger.error(f"Error getting database status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

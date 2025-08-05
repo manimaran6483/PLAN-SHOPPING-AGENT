@@ -46,17 +46,32 @@ class IFPPlanKnowledgeBase:
         raw_text = plan_details.get("raw_document_text", "")
         all_chunks = self.chunker.process_document(raw_text, plan_details)
         
+        logger.info(f"Generated {len(all_chunks)} chunks for {plan_id}")
+        
+        # Debug: Show chunk structure for first chunk
+        if all_chunks:
+            sample_chunk = all_chunks[0]
+            logger.info(f"Sample chunk structure: {list(sample_chunk.keys())}")
+            logger.info(f"Sample chunk content preview: {str(sample_chunk.get('content', ''))[:100]}...")
+        
         # Store in vector database (ONLY embeddings API calls here - unavoidable)
         chunks_stored = 0
         embedding_tokens_used = 0
         
         if all_chunks:
+            logger.info(f"Storing {len(all_chunks)} chunks in ChromaDB...")
             storage_result = self.vector_db.add_chunks_to_vector_db(all_chunks)
             chunks_stored = len(all_chunks) if storage_result else 0
             
+            # Check if storage was successful
+            collection_info = self.vector_db.get_collection_info()
+            logger.info(f"ChromaDB collection info: {collection_info}")
+            
             # Estimate embedding tokens (roughly 1 token per 4 chars for embeddings)
-            total_chunk_text = sum(len(chunk["content"]) for chunk in all_chunks)
+            total_chunk_text = sum(len(chunk.get("content", "")) for chunk in all_chunks)
             embedding_tokens_used = total_chunk_text // 4
+        else:
+            logger.warning(f"No chunks generated for {plan_id}")
         
         # Log ultra-optimization results
         extraction_summary = plan_details.get("extraction_summary", {})
@@ -89,8 +104,21 @@ class IFPPlanKnowledgeBase:
         """Query the knowledge base for information and get LLM response."""
         logger.info(f"Querying knowledge base: '{query}' for plan_id: {plan_id}")
         
+        # Check if we have any documents in the database
+        collection_info = self.vector_db.get_collection_info()
+        logger.info(f"Database status: {collection_info}")
+        
+        if not collection_info.get("has_documents", False):
+            logger.warning("No documents found in vector database!")
+            return {
+                "answer": "I don't have any insurance plan documents loaded in the knowledge base. Please ensure PDF documents are processed first.",
+                "source_documents": [],
+                "query_stats": {"estimated_tokens": 0}
+            }
+        
         # Search for relevant documents
         search_results = self.vector_db.search(query, plan_id)
+        logger.info(f"Found {len(search_results)} relevant documents")
         
         # Prepare context from search results
         context = ""
@@ -104,9 +132,11 @@ class IFPPlanKnowledgeBase:
             })
         
         if not context.strip():
+            logger.warning("No relevant context found for query")
             return {
                 "answer": "I don't have specific information about that topic in the available insurance plans. Please try rephrasing your question or ask about coverage details, costs, or benefits.",
-                "source_documents": []
+                "source_documents": [],
+                "query_stats": {"estimated_tokens": 0}
             }
         
         # Create optimized prompt for LLM
