@@ -1,35 +1,36 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import os
 import logging
 from Embeddings.IFPPlanKnowledgeBase import IFPPlanKnowledgeBase
+from token_monitor import get_token_monitor
 import shutil
 import glob
-# from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Get token monitor for ultra-optimization tracking
+token_monitor = get_token_monitor()
+
+# Initialize FastAPI app
 app = FastAPI(
-    title="Insurance Plan AI Assistant API",
-    description="REST API for Insurance Plan Shopping Agent with AI capabilities",
-    version="1.0.0"
+    title="Ultra-Optimized Insurance Plan AI Assistant",
+    description="RESTful API for insurance plan processing with ZERO-token extraction and chunking",
+    version="2.0.0-ultra"
 )
 
 # Add CORS middleware for Angular integration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200", "http://localhost:3000"],  # Angular default ports
+    allow_origins=["*"],  # Configure appropriately for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Global variables
-knowledge_base: Optional[IFPPlanKnowledgeBase] = None
 
 # Request/Response models
 class ChatRequest(BaseModel):
@@ -37,46 +38,43 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
-    source_documents: List[dict] = []
+    source_documents: List[Dict[str, Any]] = []
 
 class HealthResponse(BaseModel):
     status: str
     message: str
 
+# Global knowledge base instance
+knowledge_base = None
+
 @app.on_event("startup")
 async def startup_event():
-    """Initialize the knowledge base and load documents on startup"""
+    """Initialize the ultra-optimized knowledge base on startup"""
     global knowledge_base
-
-    # Load environment variables from .env file
-    # load_dotenv()
     
     try:
-        logger.info("Starting Insurance Plan AI Assistant API...")
-        
         # Get OpenAI API key
-        openai_api_key = os.environ.get("OPENAI_API_KEY")
+        openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
-            logger.error("OPENAI_API_KEY environment variable not set")
+            logger.error("OPENAI_API_KEY environment variable is not set!")
             raise ValueError("OPENAI_API_KEY is required")
         
-        # Clear existing ChromaDB
-        chroma_db_path = "./chroma_db"
+        logger.info("Starting ULTRA-OPTIMIZED Insurance Plan API...")
+        
+        # Create fresh ChromaDB directory
+        chroma_db_path = "chroma_db"
         if os.path.exists(chroma_db_path):
-            logger.info("Clearing existing ChromaDB...")
-            try:
-                shutil.rmtree(chroma_db_path)
-            except Exception as e:
-                logger.warning(f"Could not remove existing ChromaDB: {e}")
+            logger.info(f"Removing existing ChromaDB directory: {chroma_db_path}")
+            shutil.rmtree(chroma_db_path)
         
-        # Ensure the directory exists (ChromaDB will create it if needed)
-        os.makedirs(os.path.dirname(chroma_db_path) if os.path.dirname(chroma_db_path) else ".", exist_ok=True)
+        os.makedirs(chroma_db_path, exist_ok=True)
+        logger.info(f"Created fresh ChromaDB directory: {chroma_db_path}")
         
-        # Initialize knowledge base
-        logger.info("Initializing knowledge base...")
+        # Initialize ultra-optimized knowledge base
+        logger.info("Initializing ULTRA-OPTIMIZED knowledge base (ZERO extraction/chunking tokens)...")
         knowledge_base = IFPPlanKnowledgeBase(openai_api_key, db_directory=chroma_db_path)
         
-        # Load all PDF documents from plan_documents directory
+        # Process PDF documents with ultra-optimization
         plan_documents_dir = "plan_documents"
         if not os.path.exists(plan_documents_dir):
             logger.warning(f"Plan documents directory '{plan_documents_dir}' not found. Creating it...")
@@ -85,26 +83,41 @@ async def startup_event():
         
         if os.path.exists(plan_documents_dir):
             pdf_files = glob.glob(os.path.join(plan_documents_dir, "*.pdf"))
-            logger.info(f"Found {len(pdf_files)} PDF files to process")
+            logger.info(f"Found {len(pdf_files)} PDF files to process with ULTRA-OPTIMIZATION")
             
             if len(pdf_files) == 0:
                 logger.warning("No PDF files found in plan_documents directory")
             
             for pdf_file in pdf_files:
                 try:
-                    # Extract plan ID from filename
                     plan_id = os.path.splitext(os.path.basename(pdf_file))[0]
-                    logger.info(f"Processing document: {pdf_file} with plan_id: {plan_id}")
+                    logger.info(f"Processing {pdf_file} with ZERO-TOKEN pipeline...")
                     
-                    # Process and store the plan
+                    # Process with ultra-optimization (ZERO tokens for extraction/chunking)
                     result = knowledge_base.process_and_store_plan(pdf_file, plan_id)
+                    
+                    # Log token usage
+                    if "optimization_stats" in result:
+                        token_monitor.log_document_processing(plan_id, result["optimization_stats"])
+                        stats = result["optimization_stats"]
+                        logger.info(f"ULTRA-OPTIMIZATION RESULTS for {plan_id}:")
+                        logger.info(f"   Extraction tokens: {stats.get('extraction_tokens', 0)} (Target: 0)")
+                        logger.info(f"   Chunking tokens: {stats.get('chunking_tokens', 0)} (Target: 0)")
+                        logger.info(f"   Embedding tokens: ~{stats.get('embedding_tokens_estimate', 0)}")
+                        logger.info(f"   Features extracted: {stats.get('features_extracted', 0)}")
+                        logger.info(f"   Chunks created: {stats.get('chunks_created', 0)}")
+                    
                     logger.info(f"Successfully processed {plan_id}: {result['chunks_stored']} chunks stored")
                     
                 except Exception as e:
                     logger.error(f"Error processing {pdf_file}: {str(e)}")
                     continue
         
-        logger.info("API startup completed successfully")
+        # Generate comprehensive optimization report
+        logger.info("Generating ULTRA-OPTIMIZATION report...")
+        token_monitor.print_optimization_report()
+        
+        logger.info("ULTRA-OPTIMIZED API startup completed successfully!")
         
     except Exception as e:
         logger.error(f"Failed to initialize application: {str(e)}")
@@ -115,7 +128,7 @@ async def root():
     """Root endpoint for health check"""
     return HealthResponse(
         status="healthy", 
-        message="Insurance Plan AI Assistant API is running"
+        message="Ultra-Optimized Insurance Plan AI Assistant API is running with ZERO-token processing!"
     )
 
 @app.get("/health", response_model=HealthResponse)
@@ -126,13 +139,14 @@ async def health_check():
     
     return HealthResponse(
         status="healthy",
-        message="API is operational and knowledge base is ready"
+        message="API is operational with ultra-optimized knowledge base ready"
     )
 
 @app.post("/api/v1/chat", response_model=ChatResponse)
 async def chat_with_ai(request: ChatRequest):
     """
-    Chat endpoint for querying the AI assistant about insurance plans
+    Ultra-optimized chat endpoint for querying insurance plans
+    Uses minimal tokens - only for final LLM response generation
     """
     try:
         if knowledge_base is None:
@@ -141,19 +155,24 @@ async def chat_with_ai(request: ChatRequest):
         if not request.query or not request.query.strip():
             raise HTTPException(status_code=400, detail="Query cannot be empty")
         
-        logger.info(f"Processing query: {request.query[:100]}...")
+        logger.info(f"Processing ultra-optimized query: {request.query[:100]}...")
         
-        # Query the knowledge base across all plans (no plan_id filter)
+        # Query using ultra-optimized knowledge base
         result = knowledge_base.query_knowledge_base(query=request.query)
         
-        # Format source documents for response
+        # Log query token usage
+        if "query_stats" in result:
+            token_monitor.log_query_processing(request.query, result["query_stats"])
+            logger.info(f"Query tokens used: ~{result['query_stats'].get('estimated_tokens', 0)}")
+        
+        # Format source documents
         formatted_sources = []
         if "source_documents" in result:
             for doc in result["source_documents"]:
                 formatted_sources.append({
-                    "content": doc.page_content if hasattr(doc, 'page_content') else str(doc),
-                    "metadata": doc.metadata if hasattr(doc, 'metadata') else {},
-                    "plan_id": doc.metadata.get("plan_id", "unknown") if hasattr(doc, 'metadata') else "unknown"
+                    "content": doc.get("page_content", str(doc)),
+                    "metadata": doc.get("metadata", {}),
+                    "plan_id": doc.get("metadata", {}).get("plan_id", "unknown") if isinstance(doc.get("metadata"), dict) else "unknown"
                 })
         
         response = ChatResponse(
@@ -161,7 +180,7 @@ async def chat_with_ai(request: ChatRequest):
             source_documents=formatted_sources
         )
         
-        logger.info("Query processed successfully")
+        logger.info("Ultra-optimized query processed successfully")
         return response
         
     except Exception as e:
@@ -170,12 +189,11 @@ async def chat_with_ai(request: ChatRequest):
 
 @app.get("/api/v1/plans")
 async def get_available_plans():
-    """Get list of available plan IDs"""
+    """Get list of available insurance plan IDs"""
     try:
         if knowledge_base is None:
             raise HTTPException(status_code=503, detail="Knowledge base not initialized")
         
-        # Get available plans from the documents directory
         plan_documents_dir = "plan_documents"
         available_plans = []
         
@@ -188,12 +206,26 @@ async def get_available_plans():
                     "filename": os.path.basename(pdf_file)
                 })
         
-        return {"plans": available_plans}
+        return {"available_plans": available_plans}
         
     except Exception as e:
         logger.error(f"Error getting available plans: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+@app.get("/api/v1/optimization-stats")
+async def get_optimization_stats():
+    """Get comprehensive ultra-optimization statistics and token usage"""
+    try:
+        optimization_report = token_monitor.get_optimization_report()
+        return {
+            "status": "success",
+            "optimization_report": optimization_report,
+            "message": "Ultra-optimization statistics retrieved - check your token savings!"
+        }
+    except Exception as e:
+        logger.error(f"Error getting optimization stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run('myapp:app', host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
